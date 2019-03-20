@@ -18,7 +18,7 @@ int main(int, char**) {
 
     std::cout << "Number of Platforms: " << platforms.size() << std::endl;
 
-    for (const auto platform : platforms) {
+    for (const auto &platform : platforms) {
         std::cout << "Platform ID: " << platform_id++ << std::endl;
         std::cout << "Platform Name: " << platform.getInfo<CL_PLATFORM_NAME>() << std::endl;
         std::cout << "Platform Vendor: " << platform.getInfo<CL_PLATFORM_VENDOR>() << std::endl;
