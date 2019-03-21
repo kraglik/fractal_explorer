@@ -117,7 +117,7 @@ Camera build_camera(
 
 
 int main(int, char**) {
-    cl_int width = 750, height = 750;
+    cl_int width = 5000, height = 5000;
     bitmap_image image(width, height);
 
     std::vector<cl::Platform> platforms;
@@ -155,27 +155,35 @@ int main(int, char**) {
 
     cl::Kernel render = cl::Kernel(program, "render");
 
-    cl_uchar3 colors[width * height];
+    auto colors = (cl_uchar3 *)std::malloc(sizeof(cl_uchar3) * width * height);
 
     cl::Buffer pixel_colors(context, CL_MEM_READ_WRITE, sizeof(cl_uchar3) * width * height);
     cl::Buffer camera_buffer(context, CL_MEM_READ_WRITE, sizeof(Camera));
 
     cl_int m_width = width / 2, m_height = height / 2;
 
-    cl_float3 camera_target = {.x = 0.0f, .y = 0.0f, .z = 0.0f};
-    cl_float3 camera_up = {.x = 0.0f, .y = 1.0f, .z = 0.0f};
+    cl_float3 camera_target;
+
+    camera_target.x = 0.0f;
+    camera_target.y = 0.0f;
+    camera_target.z = 0.0f;
+
+    cl_float3 camera_up;
+    camera_up.x = 0.0f;
+    camera_up.y = 1.0f;
+    camera_up.z = 0.0f;
 
     cl_float view_plane_distance = 1.0f;
     cl_float shift_multiplier = view_plane_distance >= 1.0f ? 0.25f / view_plane_distance : view_plane_distance / 4.0f;
     cl_float ratio = 1.0f;
 
-    for (int k = 0; k < 360; k++) {
+    for (int k = 0; k < 1; k++) {
 
-        cl_float3 camera_position = {
-                .x = 10.0f * sin((float) k / (360.0f / 4.0f) * (float)M_PI),
-                .y = 0.0f,
-                .z = 10.0f * cos((float) k / (360.0f / 4.0f) * (float)M_PI)
-        };
+        cl_float3 camera_position;
+
+        camera_position.x = 10.0f * sin((float) k / (360.0f / 4.0f) * (float)M_PI);
+        camera_position.y = 0.0f;
+        camera_position.z = 10.0f * cos((float) k / (360.0f / 4.0f) * (float)M_PI);
 
         Camera camera = build_camera(
                 width,
@@ -213,4 +221,6 @@ int main(int, char**) {
 
         image.save_image("renders/result_" + std::to_string(k) + ".bmp");
     }
+
+    std::free(colors);
 }
