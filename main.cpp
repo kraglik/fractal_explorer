@@ -3,7 +3,7 @@
 #include <math.h>
 #include "bitmap/bitmap_image.hpp"
 
-#define __CL_ENABLE_EXCEPTIONS
+//#define __CL_ENABLE_EXCEPTIONS
 
 #ifdef __APPLE__
 #include <OpenCL/cl.hpp>
@@ -11,56 +11,33 @@
 #include <CL/cl.hpp>
 #endif
 
-
-#define COMPONENT_FOLD(x) ( (x>1) ? (2-x) : ((x<-1) ?(-2-x):x))
-
-float fPow = 8;
-float shiftValue = 0.95;
-float epsilon = 0.0001;
-int itLimit = 128;
-float r_min = 0.5f;
-float escape_time = 100.0f;
-float scale = 2.39128f;
-
 /**********************************************************************************************************************/
 
-typedef struct Vector {
-    float x, y, z;
-} Vector;
-
 typedef struct Ray {
-    Vector pos, dir;
+    cl_float3 pos, dir;
 } Ray;
 
-typedef struct Pair {
-    float x, y;
-} Pair;
-
-typedef struct Color {
-    unsigned char r, g, b;
-} Color;
-
 typedef struct Hit {
-    float distance;
-    int depth;
+    cl_float distance;
+    cl_int depth;
 } Hit;
 
 typedef struct Camera {
 
-    Vector pos, dir, up, u, w, v;
+    cl_float3 pos, dir, up, u, w, v;
 
-    float view_plane_distance, ratio, shift_multiplier;
-    int width, height;
+    cl_float view_plane_distance, ratio, shift_multiplier;
+    cl_int width, height;
 
 } Camera;
 
 /**********************************************************************************************************************/
 
-float len(Vector * vector) {
+float len(cl_float3 * vector) {
     return std::sqrt(vector->x * vector->x + vector->y * vector->y + vector->z * vector->z);
 }
 
-void normalize(Vector * vector) {
+void normalize(cl_float3 * vector) {
     float l = len(vector);
 
     if (l == 0.0f) {
@@ -76,32 +53,30 @@ void normalize(Vector * vector) {
     }
 }
 
-void add(Vector * a, Vector * b, Vector * result) {
+void add(cl_float3 * a, cl_float3 * b, cl_float3 * result) {
     result->x = a->x + b->x;
     result->y = a->y + b->y;
     result->z = a->z + b->z;
 }
 
-void sub(Vector * a, Vector * b, Vector * result) {
+void sub(cl_float3 * a, cl_float3 * b, cl_float3 * result) {
     result->x = a->x - b->x;
     result->y = a->y - b->y;
     result->z = a->z - b->z;
 }
 
-void cross(Vector * v1, Vector * v2, Vector * result) {
-    float a = v2->x, b = v2->y, c = v2->z;
-    float x = v1->x, y = v1->y, z = v1->z;
+void cross(cl_float3 a, cl_float3 b, cl_float3 * result) {
 
-    result->x = y * c - z * b;
-    result->y = x * c - a * z;
-    result->z = x * b - y * a;
+    result->x = a.y * b.z - a.z * b.y;
+    result->y = a.z * b.x - a.x * b.z;
+    result->z = a.x * b.y - a.y * b.x;
 }
 
-float dot(Vector * v1, Vector * v2) {
+float dot(cl_float3 * v1, cl_float3 * v2) {
     return v1->x * v2->x + v1->y * v2->y + v1->z * v2->z;
 }
 
-void scalar_mul(Vector *v, float s, Vector *result) {
+void scalar_mul(cl_float3 *v, float s, cl_float3 *result) {
     result->x = v->x * s;
     result->y = v->y * s;
     result->z = v->z * s;
@@ -109,14 +84,14 @@ void scalar_mul(Vector *v, float s, Vector *result) {
 
 
 Camera build_camera(
-        int width,
-        int height,
-        float shift_multiplier,
-        float view_plane_distance,
-        float ratio,
-        Vector position,
-        Vector target,
-        Vector up) {
+        cl_int width,
+        cl_int height,
+        cl_float shift_multiplier,
+        cl_float view_plane_distance,
+        cl_float ratio,
+        cl_float3 position,
+        cl_float3 target,
+        cl_float3 up) {
 
     Camera camera = {
             .pos = position,
@@ -131,13 +106,14 @@ Camera build_camera(
     sub(&target, &position, &camera.dir);
     normalize(&camera.dir);
 
-    sub(&position, &target, &camera.w);
+    sub(&target, &position, &camera.w);
     normalize(&camera.w);
+    scalar_mul(&camera.w, view_plane_distance, &camera.w);
 
-    cross(&up, &camera.w, &camera.u);
+    cross(camera.w, up, &camera.u);
     normalize(&camera.u);
 
-    cross(&camera.w, &camera.u, &camera.v);
+    cross(camera.u, camera.w, &camera.v);
     normalize(&camera.v);
 
     return camera;
@@ -145,21 +121,21 @@ Camera build_camera(
 
 
 int main(int, char**) {
-    int width = 500, height = 500;
-    int m_width = width / 2, m_height = height / 2;
+    cl_int width = 1000, height = 1000;
+    cl_int m_width = width / 2, m_height = height / 2;
 
-    float brightness = 1.25f;
+    cl_float brightness = 1.25f;
 
     bitmap_image image(width, height);
 
-    Vector camera_position = {.x = 7.0f, .y = 1.0f, .z = 7.0f};
+    cl_float3 camera_position = {.x = 5.0f, .y = 1.0f, .z = 0.0f};
 
-    Vector camera_target = {.x = 0.0f, .y = -0.5f, .z = 0.0f};
-    Vector camera_up = {.x = 0.0f, .y = 1.0f, .z = 0.0f};
+    cl_float3 camera_target = {.x = -1.0f, .y = 2.0f, .z = -1.0f};
+    cl_float3 camera_up = {.x = 0.0f, .y = 1.0f, .z = 0.0f};
 
-    float view_plane_distance = 1.0f;
-    float shift_multiplier = view_plane_distance >= 1.0f ? 0.25f / view_plane_distance : view_plane_distance / 4.0f;
-    float ratio = 1.0f;
+    cl_float view_plane_distance = 1.0f;
+    cl_float shift_multiplier = view_plane_distance >= 1.0f ? 0.25f / view_plane_distance : view_plane_distance / 4.0f;
+    cl_float ratio = 1.0f;
 
     Camera camera = build_camera(
             width,
@@ -171,6 +147,11 @@ int main(int, char**) {
             camera_target,
             camera_up
     );
+
+    cl_float3 camera_dir = {.x = -1.0f, .y = 0.0f, .z = -1.0f};
+    normalize(&camera_dir);
+
+    camera.dir = camera_dir;
 
     std::vector<cl::Platform> platforms;
     cl::Platform::get(&platforms);
@@ -207,9 +188,9 @@ int main(int, char**) {
 
     cl::Kernel render = cl::Kernel(program, "render");
 
-    cl_char3 colors[width * height];
+    cl_uchar3 colors[width * height];
 
-    cl::Buffer pixel_colors(context, CL_MEM_READ_WRITE, sizeof(cl_char3) * width * height);
+    cl::Buffer pixel_colors(context, CL_MEM_READ_WRITE, sizeof(cl_uchar3) * width * height);
     cl::Buffer camera_buffer(context, CL_MEM_READ_WRITE, sizeof(Camera));
 
     queue.enqueueWriteBuffer(camera_buffer, CL_TRUE, 0, sizeof(Camera), &camera);
@@ -219,17 +200,17 @@ int main(int, char**) {
 
     queue.enqueueNDRangeKernel(
             render,
-            cl::NullRange,  // kernel, offset
-            cl::NDRange(width), // global number of work items
-            cl::NDRange(height)
+            cl::NDRange(0, 0),  // kernel, offset
+            cl::NDRange(width, height) // global number of work items
     );
+    queue.enqueueBarrierWithWaitList();
 
-    queue.enqueueReadBuffer(pixel_colors, CL_TRUE, 0, sizeof(cl_char3) * width * height, colors);
+    queue.enqueueReadBuffer(pixel_colors, CL_TRUE, 0, sizeof(cl_uchar3) * width * height, colors);
     queue.finish();
 
     for (int i = 0; i < width; i++) {
         for (int j = 0; j < height; j++) {
-            cl_char3 pixel_color = colors[i * height + j];
+            cl_uchar3 pixel_color = colors[i * height + j];
             image.set_pixel(i, j, pixel_color.x, pixel_color.y, pixel_color.z);
         }
     }
