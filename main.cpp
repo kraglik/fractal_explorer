@@ -24,7 +24,7 @@ typedef struct Hit {
 
 typedef struct Camera {
 
-    cl_float3 pos, dir, up, u, w, v;
+    cl_float3 pos, dir, up, right;
 
     cl_float view_plane_distance, ratio, shift_multiplier;
     cl_int width, height;
@@ -106,52 +106,19 @@ Camera build_camera(
     sub(&target, &position, &camera.dir);
     normalize(&camera.dir);
 
-    sub(&target, &position, &camera.w);
-    normalize(&camera.w);
-    scalar_mul(&camera.w, view_plane_distance, &camera.w);
+    cross(camera.dir, up, &camera.right);
+    normalize(&camera.right);
 
-    cross(camera.w, up, &camera.u);
-    normalize(&camera.u);
-
-    cross(camera.u, camera.w, &camera.v);
-    normalize(&camera.v);
+    cross(camera.right, camera.dir, &camera.up);
+    normalize(&camera.up);
 
     return camera;
 }
 
 
 int main(int, char**) {
-    cl_int width = 1000, height = 1000;
-    cl_int m_width = width / 2, m_height = height / 2;
-
-    cl_float brightness = 1.25f;
-
+    cl_int width = 750, height = 750;
     bitmap_image image(width, height);
-
-    cl_float3 camera_position = {.x = 5.0f, .y = 1.0f, .z = 0.0f};
-
-    cl_float3 camera_target = {.x = -1.0f, .y = 2.0f, .z = -1.0f};
-    cl_float3 camera_up = {.x = 0.0f, .y = 1.0f, .z = 0.0f};
-
-    cl_float view_plane_distance = 1.0f;
-    cl_float shift_multiplier = view_plane_distance >= 1.0f ? 0.25f / view_plane_distance : view_plane_distance / 4.0f;
-    cl_float ratio = 1.0f;
-
-    Camera camera = build_camera(
-            width,
-            height,
-            shift_multiplier,
-            view_plane_distance,
-            ratio,
-            camera_position,
-            camera_target,
-            camera_up
-    );
-
-    cl_float3 camera_dir = {.x = -1.0f, .y = 0.0f, .z = -1.0f};
-    normalize(&camera_dir);
-
-    camera.dir = camera_dir;
 
     std::vector<cl::Platform> platforms;
     cl::Platform::get(&platforms);
@@ -172,9 +139,9 @@ int main(int, char**) {
     }
 
     std::string * kernel_source = new std::string(
-                        std::istreambuf_iterator<char>(kernel_file),
-                        std::istreambuf_iterator<char>()
-                    );
+            std::istreambuf_iterator<char>(kernel_file),
+            std::istreambuf_iterator<char>()
+    );
 
     sources.push_back({kernel_source->c_str(), kernel_source->length()});
 
@@ -193,27 +160,57 @@ int main(int, char**) {
     cl::Buffer pixel_colors(context, CL_MEM_READ_WRITE, sizeof(cl_uchar3) * width * height);
     cl::Buffer camera_buffer(context, CL_MEM_READ_WRITE, sizeof(Camera));
 
-    queue.enqueueWriteBuffer(camera_buffer, CL_TRUE, 0, sizeof(Camera), &camera);
+    cl_int m_width = width / 2, m_height = height / 2;
 
-    render.setArg(0, camera_buffer);
-    render.setArg(1, pixel_colors);
+    cl_float3 camera_target = {.x = 0.0f, .y = 0.0f, .z = 0.0f};
+    cl_float3 camera_up = {.x = 0.0f, .y = 1.0f, .z = 0.0f};
 
-    queue.enqueueNDRangeKernel(
-            render,
-            cl::NDRange(0, 0),  // kernel, offset
-            cl::NDRange(width, height) // global number of work items
-    );
-    queue.enqueueBarrierWithWaitList();
+    cl_float view_plane_distance = 1.0f;
+    cl_float shift_multiplier = view_plane_distance >= 1.0f ? 0.25f / view_plane_distance : view_plane_distance / 4.0f;
+    cl_float ratio = 1.0f;
 
-    queue.enqueueReadBuffer(pixel_colors, CL_TRUE, 0, sizeof(cl_uchar3) * width * height, colors);
-    queue.finish();
+    for (int k = 0; k < 360; k++) {
 
-    for (int i = 0; i < width; i++) {
-        for (int j = 0; j < height; j++) {
-            cl_uchar3 pixel_color = colors[i * height + j];
-            image.set_pixel(i, j, pixel_color.x, pixel_color.y, pixel_color.z);
+        cl_float3 camera_position = {
+                .x = 10.0f * sin((float) k / (360.0f / 4.0f) * (float)M_PI),
+                .y = 0.0f,
+                .z = 10.0f * cos((float) k / (360.0f / 4.0f) * (float)M_PI)
+        };
+
+        Camera camera = build_camera(
+                width,
+                height,
+                shift_multiplier,
+                view_plane_distance,
+                ratio,
+                camera_position,
+                camera_target,
+                camera_up
+        );
+
+        queue.enqueueWriteBuffer(camera_buffer, CL_TRUE, 0, sizeof(Camera), &camera);
+
+        render.setArg(0, camera_buffer);
+        render.setArg(1, pixel_colors);
+
+        queue.enqueueNDRangeKernel(
+                render,
+                cl::NDRange(0, 0),  // kernel, offset
+                cl::NDRange(width, height) // global number of work items
+        );
+
+        queue.enqueueBarrierWithWaitList();
+
+        queue.enqueueReadBuffer(pixel_colors, CL_TRUE, 0, sizeof(cl_uchar3) * width * height, colors);
+        queue.finish();
+
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                cl_uchar3 pixel_color = colors[i * height + j];
+                image.set_pixel(j, i, pixel_color.x, pixel_color.y, pixel_color.z);
+            }
         }
-    }
 
-    image.save_image("result.bmp");
+        image.save_image("renders/result_" + std::to_string(k) + ".bmp");
+    }
 }

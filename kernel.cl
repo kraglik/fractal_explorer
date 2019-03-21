@@ -1,6 +1,6 @@
 #define COMPONENT_FOLD(x) ( (x>1) ? (2-x) : ((x<-1) ?(-2-x):x))
 
-#define shiftValue 0.99f
+#define shiftValue 1.0f
 #define epsilon 0.00005f
 #define itLimit 128
 #define r_min 0.5f
@@ -19,7 +19,7 @@ typedef struct Hit {
 
 typedef struct Camera {
 
-    float3 pos, dir, up, u, w, v;
+    float3 pos, dir, up, right;
 
     float view_plane_distance, ratio, shift_multiplier;
     int width, height;
@@ -85,7 +85,7 @@ float mandelbox_distance(float3 p0) {
             break;
     }
 
-    r2 = len(&p);
+    r2 = sqrt(dot(p, p));
 
     return (r2 - c1) / d_factor - c2;
 }
@@ -124,12 +124,11 @@ Hit trace_ray(__global Camera *camera, float x, float y) {
     Ray ray = {};
 
     float3 temp;
+    float m = camera->shift_multiplier;
 
-    ray.dir = normalize((camera->u * (x * camera->ratio)) + (camera->w * y) - (camera->v * camera->view_plane_distance));
-
-    ray.pos = camera->pos;
-
-    move_ray_to_view_plane(&ray, camera);
+    float3 vp_center = camera->pos + camera->dir * camera->view_plane_distance;
+    ray.pos = vp_center + camera-> right * x + camera->up * y;
+    ray.dir = normalize(ray.pos - camera->pos);
 
     return march_ray(&ray, 0.0f);
 }
@@ -143,7 +142,7 @@ __kernel void render(__global Camera * camera, __global char3 * pixels) {
     float hx = (float)camera->width / 2;
     float hy = (float)camera->height / 2;
 
-    float x = camera->ratio * ((float)idX - hx) / hx;
+    float x = ((float)idX - hx) / hx * camera->ratio;
     float y = ((float)idY - hy) / hy;
 
     Hit hit = trace_ray(camera, x, y);
