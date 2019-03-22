@@ -1,7 +1,7 @@
 #define COMPONENT_FOLD(x) ( (x>1) ? (2-x) : ((x<-1) ?(-2-x):x))
 
 #define shiftValue 1.0f
-#define epsilon 0.00005f
+#define epsilon 0.001f
 #define itLimit 128
 #define r_min 0.5f
 #define escape_time 100.0f
@@ -133,7 +133,7 @@ Hit trace_ray(__global Camera *camera, float x, float y) {
     return march_ray(&ray, 0.0f);
 }
 
-__kernel void render(__global Camera * camera, __global char3 * pixels) {
+__kernel void render(__global Camera * camera, __global uchar3 * pixels) {
     int idX = get_global_id(0);
     int idY = get_global_id(1);
 
@@ -147,15 +147,19 @@ __kernel void render(__global Camera * camera, __global char3 * pixels) {
 
     Hit hit = trace_ray(camera, x, y);
 
-    pixels[pixel_id].x = 0;
-    pixels[pixel_id].y = 0;
-    pixels[pixel_id].z = 0;
-
     if (!isinf(hit.distance)) {
+
         float color_strength = 1.0f - (float)hit.depth / (float)itLimit;
 
         pixels[pixel_id].x = (unsigned char)clamp((color_strength * 255.0f), 0.0f, 229.0f);
         pixels[pixel_id].y = (unsigned char)clamp((color_strength * 255.0f), 0.0f, 210.0f);
         pixels[pixel_id].z = (unsigned char)clamp((color_strength * 255.0f), 0.0f, 180.0f);
+
+    } else {
+
+        pixels[pixel_id].x = 0;
+        pixels[pixel_id].y = 0;
+        pixels[pixel_id].z = 0;
+
     }
 }

@@ -117,15 +117,15 @@ Camera build_camera(
 
 
 int main(int, char**) {
-    cl_int width = 5000, height = 5000;
+    cl_int width = 500, height = 500;
     bitmap_image image(width, height);
 
     std::vector<cl::Platform> platforms;
     cl::Platform::get(&platforms);
-    cl::Platform platform = platforms[0];
+    cl::Platform platform = platforms[1];
 
     std::vector<cl::Device> all_devices;
-    platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
+    platform.getDevices(CL_DEVICE_TYPE_GPU, &all_devices);
 
     cl::Device device = all_devices[0];
 
@@ -177,13 +177,13 @@ int main(int, char**) {
     cl_float shift_multiplier = view_plane_distance >= 1.0f ? 0.25f / view_plane_distance : view_plane_distance / 4.0f;
     cl_float ratio = 1.0f;
 
-    for (int k = 0; k < 1; k++) {
+    for (int k = 0; k < 90; k++) {
 
         cl_float3 camera_position;
 
-        camera_position.x = 10.0f * sin((float) k / (360.0f / 4.0f) * (float)M_PI);
+        camera_position.x = 10.0f * sin((float) k / (360.0f / 2.0f) * (float)M_PI);
         camera_position.y = 0.0f;
-        camera_position.z = 10.0f * cos((float) k / (360.0f / 4.0f) * (float)M_PI);
+        camera_position.z = 10.0f * cos((float) k / (360.0f / 2.0f) * (float)M_PI);
 
         Camera camera = build_camera(
                 width,
