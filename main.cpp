@@ -13,14 +13,14 @@
 
 /**********************************************************************************************************************/
 
-typedef struct Ray {
-    cl_float3 pos, dir;
-} Ray;
-
-typedef struct Hit {
-    cl_float distance;
-    cl_int depth;
-} Hit;
+typedef struct WorldProps {
+    cl_float shiftValue;
+    cl_float epsilon;
+    cl_int itLimit;
+    cl_float r_min;
+    cl_float escape_time;
+    cl_float scale;
+} WorldProps;
 
 typedef struct Camera {
 
@@ -41,9 +41,9 @@ void normalize(cl_float3 * vector) {
     float l = len(vector);
 
     if (l == 0.0f) {
-        vector->x = 0.0;
-        vector->y = 0.0;
-        vector->z = 0.0;
+        vector->x = 0.0f;
+        vector->y = 0.0f;
+        vector->z = 0.0f;
     }
 
     else {
@@ -159,6 +159,7 @@ int main(int, char**) {
 
     cl::Buffer pixel_colors(context, CL_MEM_READ_WRITE, sizeof(cl_uchar3) * width * height);
     cl::Buffer camera_buffer(context, CL_MEM_READ_WRITE, sizeof(Camera));
+    cl::Buffer props_buffer(context, CL_MEM_READ_WRITE, sizeof(WorldProps));
 
     cl_int m_width = width / 2, m_height = height / 2;
 
@@ -173,17 +174,30 @@ int main(int, char**) {
     camera_up.y = 1.0f;
     camera_up.z = 0.0f;
 
-    cl_float view_plane_distance = 1.0f;
-    cl_float shift_multiplier = view_plane_distance >= 1.0f ? 0.25f / view_plane_distance : view_plane_distance / 4.0f;
+    cl_float3 camera_position;
+
+    camera_position.x = 0.0f;
+    camera_position.y = 0.0f;
+    camera_position.z = 9.0f;
+
     cl_float ratio = 1.0f;
 
-    for (int k = 0; k < 90; k++) {
+    cl_float view_plane_distance = 1.0f;
 
-        cl_float3 camera_position;
+    WorldProps props = {
+            .shiftValue = 1.0f,
+            .epsilon = 0.001f,
+            .itLimit = 128,
+            .r_min = 0.5f,
+            .escape_time = 100.0f,
+            .scale = 2.39128f
+    };
 
-        camera_position.x = 10.0f * sin((float) k / (360.0f / 2.0f) * (float)M_PI);
-        camera_position.y = 0.0f;
-        camera_position.z = 10.0f * cos((float) k / (360.0f / 2.0f) * (float)M_PI);
+    cl_float zoom_multiplier = 0.01f;
+
+    for (int k = 0; k < 180; k++) {
+
+        cl_float shift_multiplier = view_plane_distance >= 1.0f ? 1.0f / view_plane_distance : view_plane_distance / 4.0f;
 
         Camera camera = build_camera(
                 width,
@@ -197,9 +211,11 @@ int main(int, char**) {
         );
 
         queue.enqueueWriteBuffer(camera_buffer, CL_TRUE, 0, sizeof(Camera), &camera);
+        queue.enqueueWriteBuffer(props_buffer, CL_TRUE, 0, sizeof(WorldProps), &props);
 
         render.setArg(0, camera_buffer);
-        render.setArg(1, pixel_colors);
+        render.setArg(1, props_buffer);
+        render.setArg(2, pixel_colors);
 
         queue.enqueueNDRangeKernel(
                 render,
@@ -220,6 +236,11 @@ int main(int, char**) {
         }
 
         image.save_image("renders/result_" + std::to_string(k) + ".bmp");
+
+        view_plane_distance += zoom_multiplier;
+        props.epsilon = 0.0004f / (view_plane_distance * 0.9f);
+
+        zoom_multiplier *= 1.05f;
     }
 
     std::free(colors);
