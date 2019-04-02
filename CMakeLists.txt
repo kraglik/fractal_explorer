@@ -9,7 +9,7 @@ find_package(OpenCL REQUIRED)
 include_directories(${OpenCL_INCLUDE_DIRS})
 link_directories(${OpenCL_LIBRARY})
 
-add_executable (fractal_explorer main.cpp bitmap/bitmap_image.hpp)
+add_executable (fractal_explorer main.cpp src/camera.cpp src/camera.h src/math/vec3_ops.h src/math/quaternion.h src/math/quaternion.cpp src/math/vec3_ops.cpp src/fractal.cpp src/fractal.h src/cl_context.cpp src/cl_context.h src/app.cpp src/app.h src/render.cpp src/render.h)
 #ExternalProject_Add (
 #        NanoGUI
 #        GIT_REPOSITORY "https://github.com/wjakob/nanogui.git"
