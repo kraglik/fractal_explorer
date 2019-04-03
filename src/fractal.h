@@ -3,24 +3,19 @@
 
 #include <string>
 #include "cl_context.h"
+#include "camera.h"
 
 class Fractal {
 
 public:
-    typedef struct {
+    Fractal(const char * path_to_code);
 
-    } FractalCL;
+    std::string & get_kernel() { return *kernel; };
 
-    Fractal(CLContext & context,
-            const char * path_to_de,
-            const char * path_to_orbit_trap,);
-
-    const std::string & get_kernel() const;
+    Camera get_initial_camera();
 
 private:
-    std::string & kernel;
-    CLContext & context;
-    cl::Program program;
+    std::string * kernel;
 };
 
 
