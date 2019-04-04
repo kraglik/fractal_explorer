@@ -18,7 +18,7 @@ include_directories(${GLEW_INCLUDE_DIRS})
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 
-add_executable (fractal_explorer main.cpp src/camera.cpp src/camera.h src/math/vec3_ops.h src/math/quaternion.h src/math/quaternion.cpp src/math/vec3_ops.cpp src/fractal.cpp src/fractal.h src/cl_context.cpp src/cl_context.h src/app.cpp src/app.h src/render.cpp src/render.h)
+add_executable (fractal_explorer main.cpp src/camera.cpp src/camera.h src/math/vec3_ops.h src/math/quaternion.h src/math/quaternion.cpp src/math/vec3_ops.cpp src/fractal.cpp src/fractal.h src/cl_context.cpp src/cl_context.h src/app.cpp src/app.h src/render.cpp src/render.h src/fractals/mandelbox.cpp src/fractals/mandelbox.h src/fractals/mandelbulb.cpp src/fractals/mandelbulb.h src/fractals/menger_sponge.cpp src/fractals/menger_sponge.h src/fractals/sierpinski_triangle.cpp src/fractals/sierpinski_triangle.h)
 #ExternalProject_Add (
 #        NanoGUI
 #        GIT_REPOSITORY "https://github.com/wjakob/nanogui.git"

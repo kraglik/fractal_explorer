@@ -3,6 +3,10 @@
 #include <exception>
 #include "app.h"
 #include "math/vec3_ops.h"
+#include "src/fractals/mandelbox.h"
+#include "src/fractals/mandelbulb.h"
+#include "src/fractals/menger_sponge.h"
+#include "src/fractals/sierpinski_triangle.h"
 
 #pragma OPENCL EXTENSION CL_APPLE_gl_sharing : enable
 #pragma OPENCL EXTENSION CL_KHR_gl_sharing : enable
@@ -90,8 +94,10 @@ App::App(int width, int height, bool centered) {
     // Initializing fractal renderers
     cl_float3 sun_direction = {-1, 1, -1};
 
-    Fractal & mandelbox = * new Fractal("kernels/kernel.cl");
-    renderers.push_back(* new Render(context, sun_direction, mandelbox));
+    renderers.push_back(* new Render(context, sun_direction, * new Mandelbox()));
+    renderers.push_back(* new Render(context, sun_direction, * new Mandelbulb()));
+    renderers.push_back(* new Render(context, sun_direction, * new MengerSponge()));
+    renderers.push_back(* new Render(context, sun_direction, * new SierpinskiTriangle()));
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_CULL_FACE);

@@ -7,15 +7,15 @@
 
 class Fractal {
 
-public:
-    Fractal(const char * path_to_code);
+    public:
+        Fractal(const std::string & distance_function_code, const std::string & orbit_function_code);
 
-    std::string & get_kernel() { return *kernel; };
+        std::string & get_kernel() { return *kernel; };
 
-    Camera get_initial_camera();
+        Camera get_initial_camera();
 
-private:
-    std::string * kernel;
+    private:
+        std::string * kernel;
 };
 
 
