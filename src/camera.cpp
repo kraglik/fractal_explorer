@@ -42,8 +42,8 @@ void Camera::look_at(cl_float3 target) {
     up = normalize(right ^ direction);
 }
 
-void Camera::move(cl_float3 dir) {
-    position += normalize(dir) * movement_speed;
+void Camera::move(cl_float3 dir, cl_float delta_time) {
+    position += normalize(dir) * movement_speed * delta_time;
 }
 
 

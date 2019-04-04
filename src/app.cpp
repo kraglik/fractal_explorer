@@ -1,7 +1,8 @@
-#include "app.h"
 #include <SDL2/SDL.h>
 #include <iostream>
 #include <exception>
+#include "app.h"
+#include "math/vec3_ops.h"
 
 #pragma OPENCL EXTENSION CL_APPLE_gl_sharing : enable
 #pragma OPENCL EXTENSION CL_KHR_gl_sharing : enable
@@ -105,22 +106,38 @@ App::App(int width, int height, bool centered) {
 
 void App::run() {
     SDL_ShowWindow(window);
+    SDL_ShowCursor(SDL_DISABLE);
 
     glViewport(0, 0, win_width, win_height);
+    SDL_SetRelativeMouseMode(SDL_TRUE);
 
     bool running = true;
-    cl_float3 movement = {0, 0, 0};
+
     uint32_t renderer_index = 0;
 
+    Uint64 NOW = SDL_GetPerformanceCounter();
+    Uint64 LAST = 0;
+    float delta_time;
+
+    const Uint8 * keyboard_state = SDL_GetKeyboardState(NULL);
+
     while (running) {
+        LAST = NOW;
+        NOW = SDL_GetPerformanceCounter();
+
+        cl_float3 movement = {0, 0, 0};
+
+        delta_time = (float)((NOW - LAST)*1000 / (float)SDL_GetPerformanceFrequency() );
+
         SDL_Event event;
         Render & renderer = renderers[renderer_index];
+        Camera & camera = renderer.get_camera();
 
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT)
                 running = false;
 
-            if (event.type == SDL_KEYDOWN) {
+            else if (event.type == SDL_KEYDOWN) {
                 switch (event.key.keysym.sym) {
                     case SDLK_F11:
                         fullscreen = !fullscreen;
@@ -135,18 +152,51 @@ void App::run() {
                         running = false;
                         break;
 
+                    case SDLK_UP:
+                        camera.set_movement_speed(camera.get_movement_speed() * 1.5f);
+                        break;
+
+                    case SDLK_DOWN:
+                        camera.set_movement_speed(camera.get_movement_speed() / 1.5f);
+                        break;
+
                     default:
                         break;
                 }
             }
 
-            if (event.type == SDL_KEYUP) {
-                switch (event.key.keysym.sym) {
-                    default:
-                        break;
-                }
+            else if (event.type == SDL_MOUSEMOTION) {
+                int m = std::min(fullscreen ? screen_width : win_width,
+                                 fullscreen ? screen_height : win_height);
+
+                float dx = (float)event.motion.xrel / (float)m;
+                float dy = (float)event.motion.yrel / (float)m;
+
+                camera.rotate(dx, -dy);
             }
         }
+
+        SDL_PumpEvents();
+
+        if (keyboard_state[SDL_SCANCODE_W])
+            movement += camera.get_direction();
+
+        if (keyboard_state[SDL_SCANCODE_S])
+            movement -= camera.get_direction();
+
+        if (keyboard_state[SDL_SCANCODE_A])
+            movement -= camera.get_right();
+
+        if (keyboard_state[SDL_SCANCODE_D])
+            movement += camera.get_right();
+
+        if (keyboard_state[SDL_SCANCODE_SPACE])
+            movement += camera.get_up();
+
+        if (keyboard_state[SDL_SCANCODE_LSHIFT])
+            movement -= camera.get_up();
+
+        camera.move(movement, delta_time);
 
         render(renderer);
     }
@@ -188,10 +238,10 @@ void App::render(Render & renderer) {
 
     glBegin(GL_QUADS);
 
-    glTexCoord2f(0, 1); glVertex2f(-1, -1);
-    glTexCoord2f(1, 1); glVertex2f(1, -1);
-    glTexCoord2f(1, 0); glVertex2f(1, 1);
-    glTexCoord2f(0, 0); glVertex2f(-1, 1);
+    glTexCoord2f(0, 0); glVertex2f(-1, -1);
+    glTexCoord2f(1, 0); glVertex2f(1, -1);
+    glTexCoord2f(1, 1); glVertex2f(1, 1);
+    glTexCoord2f(0, 1); glVertex2f(-1, 1);
 
     glEnd();
 

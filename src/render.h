@@ -15,9 +15,12 @@ public:
     void render(cl::Image2D & image, int width, int height);
 
 private:
+
     CLContext & context;
     Fractal & fractal;
     Camera camera;
+
+    cl::Buffer camera_buffer;
 
     cl::Program program;
     cl::Program::Sources sources;

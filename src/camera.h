@@ -19,8 +19,8 @@ class Camera {
             cl_float3 pos, cl_float3 dir, cl_float3 up,
             cl_float zoom = 1.0f,
             cl_float focus = 0.0f,
-            cl_float movement_speed = 1.0f,
-            cl_float rotation_speed = 1.0f
+            cl_float movement_speed = 0.01f,
+            cl_float rotation_speed = 10.0f
         );
 
         cl_float3 get_position() const { return position; }
@@ -40,7 +40,7 @@ class Camera {
         void set_rotation_speed(cl_float new_speed) { rotation_speed = new_speed; }
 
         void look_at(cl_float3 target);
-        void move(cl_float3 direction);
+        void move(cl_float3 direction, cl_float delta_time);
         void rotate(cl_float dx, cl_float dy);
 
     private:

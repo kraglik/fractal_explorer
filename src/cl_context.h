@@ -1,7 +1,7 @@
 #ifndef FRACTAL_EXPLORER_CL_CONTEXT_H
 #define FRACTAL_EXPLORER_CL_CONTEXT_H
 
-#define __CL_ENABLE_EXCEPTIONS
+//#define __CL_ENABLE_EXCEPTIONS
 #ifdef __APPLE__
 #include <OpenCL/cl.hpp>
 #else
